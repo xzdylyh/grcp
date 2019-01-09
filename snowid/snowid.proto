@@ -1,0 +1,16 @@
+syntax = "proto3";
+package snowid;
+message GenerateSnowidRequest {
+    int64 uniqId = 1;
+}
+
+message GenerateSnowidReply{
+    int64 errCode = 1; //0值表示调用接口成功
+    string errMsg = 2;
+    int64 result = 3;
+}
+
+
+service snowid {
+    rpc generateSnowid( GenerateSnowidRequest) returns(GenerateSnowidReply) {} 
+}

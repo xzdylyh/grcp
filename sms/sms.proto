@@ -1,0 +1,210 @@
+syntax = "proto3";
+package sms;
+
+// 普通短信（单条或多条）
+message SMSRequest {
+    int64 BatchID = 1; // 批次id
+    int64 Bid = 2; // 商家id
+    int64 BizId = 3; // 业务类型
+    string Message = 4; // 短信内容
+    repeated UserInfo Users = 5; // 短信接收的用户信息
+    string Operator = 6; // 短信发送触发人
+}
+
+// 模板短信（单条或多条）
+message TplSMSRequest {
+    int64 BatchID = 1; // 批次id
+    int64 Bid = 2; // 商家id
+    int64 BizId = 3; // 业务类型
+    repeated UserInfo Users = 4; // 短信接收的用户信息
+    string Template = 5; // 如果不为空，优先使用这个模板
+    string Operator = 6; // 短信发送触发人
+}
+
+// 发送短信接口应答
+message SMSReply {
+    int64 ErrorCode = 1; // 错误码
+    string ErrorMsg = 2; // 错误信息
+}
+
+// 用户信息
+// 区域码和手机号必须有且合法，否则将被丢弃
+message UserInfo {
+    string Phone = 1; // 手机号
+    string AreaCode = 2; // 手机号区域码
+    map<string, string> MessageVar = 3; // 替换模板用的变量
+
+    // 以下门店Id必须都填写，否则请求会报错
+    // 此处更新的话一定要修改git.dev.acewill.net/rpc/GoSMS/handle/smstunnel/smsutil/checkreq.go CheckUsers函数！！！
+    int64 TradeSid = 4; // 交易门店id
+    int64 CreateSid = 5; // 创建门店id
+    int64 OpenCardSid = 6; // 开卡门店id
+    int64 SendCouponSid = 7; // 发券门店id
+}
+
+//////////////// 短信通道配置 ////////////////
+
+message TunnelConfigQuery {
+    string Operator = 1; // 操作人
+}
+
+message TunnelConfigUpdate {
+    string Operator = 1; // 操作人
+    repeated TunnelToBiz Config = 2; // 最新的通道与业务配置信息
+}
+
+message TunnelReplay {
+    int64 ErrorCode = 1; // 响应码
+    string ErrorMsg = 2; // 响应错误信息
+    repeated TunnelToBiz Config = 3; // 最新的通道与业务配置信息
+}
+
+message TunnelToBiz {
+    int64 tunnelId = 1; // 通道
+    repeated int64 bizIds = 2; // 通道下的业务
+}
+
+//////////////// 短信费率配置 ////////////////
+
+message SmsPriceConfigQuery {
+    string Operator = 1; // 操作人
+}
+
+message SmsPriceConfigUpdate {
+    string Operator = 1; // 操作人
+    repeated SmsPrice Config = 2; // 短信费率集合
+}
+
+// 短信费率应答
+message SmsPriceReplay {
+    int64 ErrorCode = 1; // 响应码
+    string ErrorMsg = 2; // 响应错误信息
+    repeated SmsPrice Config = 3; // 短信费率集合
+}
+
+// 短信费率（必须设置国家名称和区域码）
+message SmsPrice {
+    string Country = 1; // 国家名
+    string AreaCode = 2; // 区域码
+    int64 Price = 3; // 费率（单位分）
+}
+
+service SmsInterface {
+    // 发送普通短信
+    rpc SendNormalSMS (SMSRequest) returns (SMSReply) {
+    }
+
+    // 发送模板短信
+    rpc SendTemplateSMS (TplSMSRequest) returns (SMSReply) {
+    }
+
+    // 查询业务类型与短信通道对应关系（全量）
+    rpc QueryTunnelConfig (TunnelConfigQuery) returns (TunnelReplay) {
+    }
+
+    // 更新业务类型与短信通道对应关系（全量）
+    rpc UpdateTunnelConfig (TunnelConfigUpdate) returns (TunnelReplay) {
+    }
+
+    // 短信费率查询（全量）
+    rpc QuerySmsPriceConfig (SmsPriceConfigQuery) returns (SmsPriceReplay) {
+    }
+
+    // 短信费率更新（全量）
+    rpc UpdateSmsPriceConfig (SmsPriceConfigUpdate) returns (SmsPriceReplay) {
+    }
+
+    // 查询扣费记录
+    rpc QueryAccountLog (AccountLogRequest) returns (AccountLogReply) {
+    }
+    // 查询扣费方式
+    rpc QueryDeductionRule (QueryDeductionRuleRequest) returns (QueryDeductionRuleReply) {
+    }
+    // 设置扣费方式
+    rpc SetDeductionRule (SetDeductionRuleRequest) returns (SetDeductionRuleReply) {
+    }
+}
+
+message AccountLogRequest {
+    int64 Bid = 1; //商户id
+    repeated int64 Tunnels = 2; //通道，可以多选，所以是repeated
+    repeated int64 BizIDs = 3; // 业务，可以多选
+    string startDate = 4; //起始时间
+    string endDate = 5; //结束时间
+    int64 freeType = 6; //查询扣费类型，三个可选值，1-全部，2-收费，3-免费
+    int64 pageSize = 7; // 每页条数
+    int64 pageNum = 8; // 页码数
+}
+message AccountLogReply {
+    int64 ErrorCode = 1; //错误代码
+    string ErrorMsg = 2; //错误消息
+    AccountLogSummary AccountLogSummary = 3; // 记录
+}
+
+message AccountLogSummary {
+    int64 totalSendPeopleCount = 1; //总发送人数 = 国内总发送人数+境外总发送人数
+    int64 totalSendChinaPeopleCount = 2; //国内总发送人数
+    int64 totalSendWorldPeopleCount = 3; //境外总发送人数
+    int64 totalSendSMSCount = 4; //总发送条数 = 国内总发送条数+境外总发送人数
+    int64 totalSendChinaSMSCount = 5; //国内总发送条数
+    int64 totalSendWorldSMSCount = 6; //境外总发送人数
+    int64 totalTradeMoney = 7; //总费用 = 国内总费用+境外总费用
+    int64 totalTradeChinaMoney = 8; //国内总费用
+    int64 totalTradeWorldMoney = 9; //境外总费用
+    int64 totalPage = 10; // 总页数
+    int64 pageSize = 11; //每页条数
+    int64 currentPageNum = 12; // 当前页
+    repeated AccountLog accountLogs = 13; // 详细信息
+}
+
+message AccountLog {
+    int64 bid = 1; //商户id
+    int64 totalSendPeopleCount = 2; //总发送人数 = 国内总发送人数+境外总发送人数
+    int64 totalSendChinaPeopleCount = 3; //国内总发送人数
+    int64 totalSendWorldPeopleCount = 4; //境外总发送人数
+    int64 totalSendSMSCount = 5; //总发送条数 = 国内总发送条数+境外总发送人数
+    int64 totalSendChinaSMSCount = 6; //国内总发送条数
+    int64 totalSendWorldSMSCount = 7; //境外总发送人数
+    int64 totalTradeMoney = 8; //总费用 = 国内总费用+境外总费用
+    int64 totalTradeChinaMoney = 9; //国内总费用
+    int64 totalTradeWorldMoney = 10; //境外总费用
+    bool free = 11; //收费类型， true为收费，false为免费
+}
+
+//扣费设置的请求参数
+message QueryDeductionRuleRequest {
+    int64 bid = 1; // 商户id
+}
+
+//扣费设置的返回值
+message QueryDeductionRuleReply {
+    int64 ErrorCode = 1; // 响应码
+    string ErrorMsg = 2; // 响应错误信息
+    int64 bid = 3; //商户id
+    repeated DeductionRule deductionRules = 4; //返回值数组
+}
+
+message DeductionRule {
+    int64 id = 1; //总业务id，这个id下包含很多子业务，子业务在数据库里是分条存的，但是php的接口只会返回总业务的配置。 for example，生日赠券、开卡关怀等是长期活动发券的子业务，在数据库中是保存为三条，但是返回给php的只会返回长期活动发券一条
+    string name = 2; //业务名字 如，长期活动发券
+    string childrenName = 3; //子业务名字列表，如"开卡关怀、填资料赠券、生日赠券"
+    enum Rule {
+        BASE = 0; //总部扣费
+        TRADE_SHOP = 1; // 交易门店扣费
+        CREATE_SHOP = 2; //创建门店扣费
+        OPEN_CARD_SHOP = 3; //开卡门店扣费
+        SEND_COUPON_SHOP = 4; //发券门店扣费
+    }
+    Rule selected = 4; //当前被选择的值，如果商家没有配置过，默认都是总部扣费
+    repeated Rule available = 5; //可选项 是一个数组，比如可以选择总部扣费与交易门店扣费，那么会返回这两个数组
+}
+
+message SetDeductionRuleRequest {
+    int64 bid = 1;
+    repeated DeductionRule deductionRules = 2;
+    string operator = 3;
+}
+message SetDeductionRuleReply {
+    int64 ErrorCode = 1; // 响应码
+    string ErrorMsg = 2; // 响应错误信息
+}

@@ -1,0 +1,29 @@
+syntax = "proto3";
+package user;
+
+message CardInfo{
+    string acNo = 1;
+    string name = 2;
+    int64 gender = 3;
+    string phone = 4;
+}
+message BatchOpenActualCardRequest{
+    int64 uniqId = 1;
+    int64 bid = 2;
+    int64 acbId = 3;
+    int64 ccid = 4;
+    int64 sid = 5;
+    string qrid = 6;
+    int64 type = 7; //1:acNo not null, phone not null; 2 acNo not null, phone null; 
+    repeated CardInfo users = 8; //每次500个
+}
+message BatchOpenActualCardReply {
+    int64 errCode = 1; //0值表示调用接口成功
+    string errMsg = 2;
+    bool result = 3;
+}
+
+service user {
+    rpc batchOpenActualCard( BatchOpenActualCardRequest) returns(BatchOpenActualCardReply) {} 
+}
+
