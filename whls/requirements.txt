@@ -63,7 +63,7 @@ prometheus-client==0.5.0
 prompt-toolkit==1.0.15
 py==1.5.3
 pycparser==2.18
-Pygments==2.3.1
+Pygments==2.7.4
 pylint==1.9.3
 pyparsing==2.2.0
 pytest==3.6.0
